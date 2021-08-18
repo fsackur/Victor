@@ -32,4 +32,9 @@ Describe Get-GitLog {
     It "Gets commits" {
         (Get-GitLog).Count | Should -Be 6
     }
+
+    It "Gets up to Count commits" {
+        (Get-GitLog -Count 9).Count | Should -Be 6
+        (Get-GitLog -Count 2).Count | Should -Be 2
+    }
 }
