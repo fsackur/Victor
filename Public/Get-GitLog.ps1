@@ -3,10 +3,16 @@ using namespace System.Collections.Generic
 function Get-GitLog
 {
     [CmdletBinding()]
-    param ()
+    param
+    (
+        [int]$Count = 30
+    )
 
 
     $LogArgs = [List[string]]::new()
+
+
+    $LogArgs.Add("-n $Count")
 
     # https://git-scm.com/docs/git-log#_pretty_formats
     $Format = [ordered]@{
