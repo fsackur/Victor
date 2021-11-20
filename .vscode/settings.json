@@ -6,4 +6,5 @@
     "files.trimTrailingWhitespace": true,
     "editor.trimAutoWhitespace": true,
     "editor.tabSize": 4,
+    "powershell.scriptAnalysis.settingsPath": ".vscode/PSScriptAnalyzerSettings.psd1",
 }
