@@ -7,8 +7,15 @@ $Module = $PSScriptRoot |
 
 function New-TestGitDir
 {
-    [CmdletBinding()]
-    param ()
+    [CmdletBinding(DefaultParameterSetName = 'Init')]
+    param
+    (
+        [Parameter(ParameterSetName = 'Clone', Mandatory)]
+        [string]$CloneFrom,
+
+        [Parameter(ParameterSetName = 'Clone')]
+        [switch]$Bare
+    )
 
     $ErrorActionPreference = 'Stop'
 
@@ -21,19 +28,31 @@ function New-TestGitDir
     $Name = [IO.Path]::GetRandomFileName()
     $Path = Join-Path $Temp $Name
 
-    New-Item $Path -ItemType Directory | Push-Location
-
-    $Global:__VICTOR_TEST_GIT_DIRS += $Path
-
-    try
+    if ($PSCmdlet.ParameterSetName -eq 'Clone')
     {
-        git init *>&1 | Write-Debug
-        git checkout -b main *>&1 | Write-Debug
+        git clone $CloneFrom $Path '--shared' $(if ($Bare) {'bare'}) *>&1 | Write-Debug
+
+        $Global:__VICTOR_TEST_GIT_DIRS += $Path
+
         $Path
+
     }
-    finally
+    else
     {
-        Pop-Location
+        New-Item $Path -ItemType Directory | Push-Location
+
+        $Global:__VICTOR_TEST_GIT_DIRS += $Path
+
+        try
+        {
+            git init                *>&1 | Write-Debug
+            git checkout -b main    *>&1 | Write-Debug
+            $Path
+        }
+        finally
+        {
+            Pop-Location
+        }
     }
 }
 
