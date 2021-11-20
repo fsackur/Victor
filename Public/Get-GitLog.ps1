@@ -10,7 +10,7 @@ function Get-GitLog
 
 
     $LogArgs = [List[string]]::new()
-
+    $LogArgs.Add("log")
 
     $LogArgs.Add("-n $Count")
 
@@ -29,7 +29,7 @@ function Get-GitLog
 
 
     # Do the thing
-    $CommitLines = & git log $LogArgs
+    $CommitLines = & git $LogArgs
 
     $CommitLines | ConvertFrom-Csv -Delimiter $Delim -Header $OutputProperties
 }
