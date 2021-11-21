@@ -28,10 +28,6 @@ Describe Get-GitBranch {
         git checkout --track upstream/staging   *>&1 | Write-Debug
         git checkout --track origin/feature     *>&1 | Write-Debug
         git checkout -b dev                     *>&1 | Write-Debug
-
-        $ExpectedRemoteBranchNames   = 'upstream/main', 'upstream/staging', 'origin/feature'
-        $ExpectedTrackingBranchNames = $ExpectedRemoteBranchNames -replace '.*/'
-        $ExpectedBranchNames         = $ExpectedTrackingBranchNames + 'dev'
     }
 
     AfterAll {
@@ -39,7 +35,47 @@ Describe Get-GitBranch {
         Clear-TestGitDir
     }
 
-    It "Gets branches" {
-        (Get-GitBranch).Count | Should -Be $ExpectedBranchNames.Count
+    Context "<_.Name>" -Foreach @(
+        @{
+            Name           = 'Active branch'
+            Params         = @{Active = $true}
+            ExpectedRemote = @()
+            ExpectedActive = 'dev'
+        },
+        @{
+            Name           = 'All branches'
+            Params         = @{}
+            ExpectedRemote = 'upstream/main', 'upstream/staging', 'origin/feature'
+            ExpectedActive = 'dev'
+        }
+    ) {
+
+        BeforeAll {
+            $BranchNames = Get-GitBranch @Params -NameOnly
+            $Branches    = Get-GitBranch @Params
+
+            $ExpectedBranchNames = ($ExpectedRemote -replace '.*/') + $ExpectedActive
+        }
+
+        It "Gets branch name$(if (-not $Params.Active) {'s'})" {
+            $BranchNames | Sort-Object | Should -Be ($ExpectedBranchNames | Sort-Object)
+        }
+
+        It "Gets branch$(if (-not $Params.Active) {'es'})" {
+            $Branches.Count | Should -Be $ExpectedBranchNames.Count
+            $Branches.Name | Sort-Object | Should -Be ($ExpectedBranchNames | Sort-Object)
+        }
+
+        It "Finds active branch" {
+            $Branches | Where-Object {$_.Active} | Select-Object -ExpandProperty Name | Should -Be $ExpectedActive
+        }
+
+        It "Gets tracking branch" {
+            $Branches.Upstream | Where-Object {$_} | Sort-Object | Should -Be ($ExpectedRemote | Sort-Object)
+        }
+
+        It "Gets SHA" {
+            @($Branches.Id) | Should -Match '^[0-9a-f]{7,}$'
+        }
     }
 }
