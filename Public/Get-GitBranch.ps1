@@ -21,7 +21,7 @@ function Get-GitBranch
     {
         if ($Active)
         {
-            return git name-rev HEAD --name-only
+            return git rev-parse --abbrev-ref HEAD
         }
 
         return git for-each-ref --format=$($Format.Name) refs/heads
