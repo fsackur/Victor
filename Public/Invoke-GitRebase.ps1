@@ -1,3 +1,61 @@
+using namespace System.Collections.Generic
+using namespace System.Management.Automation
+
+$Script:COMMON_PARAMETERS = (
+    'Debug',
+    'ErrorAction',
+    'ErrorVariable',
+    'InformationAction',
+    'InformationVariable',
+    'OutBuffer',
+    'OutVariable',
+    'PipelineVariable',
+    'Verbose',
+    'WarningAction',
+    'WarningVariable',
+    'Confirm',
+    'WhatIf',
+    'UseTransaction'
+)
+
+function RebaseParams_NotInRebase
+{
+    param
+    (
+        [Parameter(ParameterSetName = 'Count', Position = 0)]
+        [ValidateRange(1, 5000)]
+        [int]$Count,
+
+        [Parameter(ParameterSetName = 'FromRef', Position = 0)]
+        [Parameter(ParameterSetName = 'Count')]
+        [string]$Onto,
+
+        [Parameter(ParameterSetName = 'FromRef')]
+        [string]$FromRef,
+
+        [Parameter()]
+        [switch]$Interactive,
+
+        [Parameter()]
+        [switch]$NoAutosquash
+    )
+}
+
+function RebaseParams_InRebase
+{
+    param
+    (
+        [Parameter(ParameterSetName = 'Continue', Mandatory)]
+        [switch]$Continue,
+
+        [Parameter(ParameterSetName = 'Abort', Mandatory)]
+        [switch]$Abort,
+
+        [Parameter(ParameterSetName = 'Skip', Mandatory)]
+        [switch]$Skip
+    )
+}
+
 function Invoke-GitRebase
 {
     <#
@@ -149,121 +207,117 @@ function Invoke-GitRebase
     #>
 
     [CmdletBinding(DefaultParameterSetName = 'Count')]
-    param
-    (
-        [Parameter(ParameterSetName = 'Abort', Mandatory)]
-        [switch]$Abort,
+    param ()
 
-        [Parameter(ParameterSetName = 'Continue', Mandatory)]
-        [switch]$Continue,
-
-        [Parameter(ParameterSetName = 'Skip', Mandatory)]
-        [switch]$Skip,
-
-        [Parameter(ParameterSetName = 'Count', Position = 0)]
-        [ValidateRange(1, 5000)]
-        [int]$Count,
-
-        [Parameter(ParameterSetName = 'FromRef', Position = 0)]
-        [Parameter(ParameterSetName = 'Count')]
-        [string]$Onto,
-
-        [Parameter(ParameterSetName = 'FromRef')]
-        [string]$FromRef,
-
-        [Parameter()]
-        [switch]$Interactive,
-
-        [Parameter()]
-        [switch]$NoAutosquash
-    )
-
-
-    if ($PSCmdlet.ParameterSetName -in ('Abort', 'Continue', 'Skip'))
+    dynamicparam
     {
+        $DynParams    = [RuntimeDefinedParameterDictionary]::new()
+
+        $ParamCommand = if (Test-ActiveRebase) {Get-Command RebaseParams_InRebase} else {Get-Command RebaseParams_NotInRebase}
+        $SourceParams = $ParamCommand.Parameters.Values | Where-Object Name -notin $Script:COMMON_PARAMETERS
+        foreach ($Param in $SourceParams)
+        {
+            $DynParam = [RuntimeDefinedParameter]::new(
+                $Param.Name,
+                $Param.ParameterType,
+                $Param.Attributes
+            )
+            $DynParams.Add($DynParam.Name, $DynParam)
+        }
+
+        return $DynParams
+    }
+
+    end
+    {
+        $PSBoundParameters.GetEnumerator() | ForEach-Object {Set-Variable $_.Key $_.Value}
+
+        if ($PSCmdlet.ParameterSetName -in ('Abort', 'Continue', 'Skip'))
+        {
+            try
+            {
+                $_editor = $env:GIT_EDITOR
+                $env:GIT_EDITOR = 'true'        # short-circuits git's editor, so --continue doesn't prompt
+                return git rebase --$($PSCmdlet.ParameterSetName.ToLower())
+            }
+            finally
+            {
+                $env:GIT_EDITOR = $_editor
+            }
+        }
+
+
+        $RebaseArgs = @(
+            "rebase",
+            "-i",               # Always operate in interactive mode, to apply autosquash - we hack it with GIT_SEQUENCE_EDITOR
+            "--autostash"
+        )
+
+        if (-not ($Interactive -and $NoAutosquash))
+        {
+            $RebaseArgs += "--autosquash"
+        }
+
+        if ($Onto)
+        {
+            $RebaseArgs += "--onto"
+            $RebaseArgs += $Onto
+        }
+
+        if (-not $FromRef)
+        {
+            if ($Count)
+            {
+                $FromRef = "HEAD~$Count"
+            }
+            else
+            {
+                $FromRef = Get-GitLog -SinceLastMerge | Select-Object -Last 1 -ExpandProperty Id
+                if (-not $FromRef)
+                {
+                    throw "Unable to determine the last merge in the commit history to use as a rebase base. Try specifying FromRef or Count."
+                }
+                $FromRef = "$FromRef^1"
+            }
+        }
+        $RebaseArgs += $FromRef
+
+
+        if ($Interactive)
+        {
+            return git $RebaseArgs
+        }
+
+
         try
         {
-            $_editor = $env:GIT_EDITOR
-            $env:GIT_EDITOR = 'true'        # short-circuits git's editor, so --continue doesn't prompt
-            return git rebase --$($PSCmdlet.ParameterSetName.ToLower())
+            $Output = $null
+
+            $_gse = $env:GIT_SEQUENCE_EDITOR
+            $env:GIT_SEQUENCE_EDITOR = "true"   # short-circuits git's todo editor, but not the primary editor
+
+            $Output = git $RebaseArgs 2>&1
+
+            if ($LASTEXITCODE)
+            {
+                throw $LASTEXITCODE
+            }
         }
+
+        catch
+        {
+            $Escape    = [char]27
+            $Firebrick = "$Escape[38;2;178;34;34m"
+            $Reset     = "$Escape[0m"
+            @($Output) -match '^CONFLICT' | ForEach-Object {Write-Information "$Firebrick$_$Reset" -InformationAction Continue}
+            $Output | Select-Object -Last 1 | Write-Error
+
+            git rebase --abort
+        }
+
         finally
         {
-            $env:GIT_EDITOR = $_editor
+            $env:GIT_SEQUENCE_EDITOR = $_gse
         }
-    }
-
-
-    $RebaseArgs = @(
-        "rebase",
-        "-i",               # Always operate in interactive mode, to apply autosquash - we hack it with GIT_SEQUENCE_EDITOR
-        "--autostash"
-    )
-
-    if (-not ($Interactive -and $NoAutosquash))
-    {
-        $RebaseArgs += "--autosquash"
-    }
-
-    if ($Onto)
-    {
-        $RebaseArgs += "--onto"
-        $RebaseArgs += $Onto
-    }
-
-    if (-not $FromRef)
-    {
-        if ($Count)
-        {
-            $FromRef = "HEAD~$Count"
-        }
-        else
-        {
-            $FromRef = Get-GitLog -SinceLastMerge | Select-Object -Last 1 -ExpandProperty Id
-            if (-not $FromRef)
-            {
-                throw "Unable to determine the last merge in the commit history to use as a rebase base. Try specifying FromRef or Count."
-            }
-            $FromRef = "$FromRef^1"
-        }
-    }
-    $RebaseArgs += $FromRef
-
-
-    if ($Interactive)
-    {
-        return git $RebaseArgs
-    }
-
-
-    try
-    {
-        $Output = $null
-
-        $_gse = $env:GIT_SEQUENCE_EDITOR
-        $env:GIT_SEQUENCE_EDITOR = "true"   # short-circuits git's todo editor, but not the primary editor
-
-        $Output = git $RebaseArgs 2>&1
-
-        if ($LASTEXITCODE)
-        {
-            throw $LASTEXITCODE
-        }
-    }
-
-    catch
-    {
-        $Escape    = [char]27
-        $Firebrick = "$Escape[38;2;178;34;34m"
-        $Reset     = "$Escape[0m"
-        @($Output) -match '^CONFLICT' | ForEach-Object {Write-Information "$Firebrick$_$Reset" -InformationAction Continue}
-        $Output | Select-Object -Last 1 | Write-Error
-
-        git rebase --abort
-    }
-
-    finally
-    {
-        $env:GIT_SEQUENCE_EDITOR = $_gse
     }
 }
