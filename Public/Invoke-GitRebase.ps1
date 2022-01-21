@@ -321,3 +321,12 @@ function Invoke-GitRebase
         }
     }
 }
+
+
+Register-ArgumentCompleter -CommandName Select-GitCommit -ParameterName Onto -ScriptBlock {
+    param ($commandName, $parameterName, $wordToComplete, $commandAst, $fakeBoundParameters)
+
+    $BranchNames = Get-GitBranch | Where-Object Active -ne $true | Select-Object -ExpandProperty Name
+
+    ($BranchNames -like "$wordToComplete*"), ($BranchNames -like "*?$wordToComplete*") | Write-Output
+}
