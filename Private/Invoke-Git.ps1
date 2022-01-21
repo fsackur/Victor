@@ -6,13 +6,22 @@ function Invoke-Git
 
     $Output = & $Git @args *>&1
 
-    if ($?)
+    if ($LASTEXITCODE)
     {
-        $Output | Write-Output
+        $Output | ForEach-Object {
+            if ($_ -is [Management.Automation.ErrorRecord])
+            {
+                Write-Error -ErrorRecord $_
+            }
+            else
+            {
+                Write-Error -Message $_
+            }
+        }
     }
     else
     {
-        $Output | Write-Error
+        $Output | ForEach-Object {[string]$_}
     }
 }
 Set-Alias git Invoke-Git
