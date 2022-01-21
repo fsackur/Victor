@@ -1,61 +1,6 @@
 using namespace System.Collections.Generic
 using namespace System.Management.Automation
 
-$Script:COMMON_PARAMETERS = (
-    'Debug',
-    'ErrorAction',
-    'ErrorVariable',
-    'InformationAction',
-    'InformationVariable',
-    'OutBuffer',
-    'OutVariable',
-    'PipelineVariable',
-    'Verbose',
-    'WarningAction',
-    'WarningVariable',
-    'Confirm',
-    'WhatIf',
-    'UseTransaction'
-)
-
-function RebaseParams_NotInRebase
-{
-    param
-    (
-        [Parameter(ParameterSetName = 'Count', Position = 0)]
-        [ValidateRange(1, 5000)]
-        [int]$Count,
-
-        [Parameter(ParameterSetName = 'FromRef', Position = 0)]
-        [Parameter(ParameterSetName = 'Count')]
-        [string]$Onto,
-
-        [Parameter(ParameterSetName = 'FromRef')]
-        [string]$FromRef,
-
-        [Parameter()]
-        [switch]$Interactive,
-
-        [Parameter()]
-        [switch]$NoAutosquash
-    )
-}
-
-function RebaseParams_InRebase
-{
-    param
-    (
-        [Parameter(ParameterSetName = 'Continue', Mandatory)]
-        [switch]$Continue,
-
-        [Parameter(ParameterSetName = 'Abort', Mandatory)]
-        [switch]$Abort,
-
-        [Parameter(ParameterSetName = 'Skip', Mandatory)]
-        [switch]$Skip
-    )
-}
-
 function Invoke-GitRebase
 {
     <#
@@ -211,11 +156,52 @@ function Invoke-GitRebase
 
     dynamicparam
     {
-        $DynParams    = [RuntimeDefinedParameterDictionary]::new()
+        $DynParams = [RuntimeDefinedParameterDictionary]::new()
 
-        $ParamCommand = if (Test-ActiveRebase) {Get-Command RebaseParams_InRebase} else {Get-Command RebaseParams_NotInRebase}
-        $SourceParams = $ParamCommand.Parameters.Values | Where-Object Name -notin $Script:COMMON_PARAMETERS
-        foreach ($Param in $SourceParams)
+        if (-not $Script:RebaseParams)
+        {
+            function _rebase
+            {
+                param
+                (
+                    #region params for active rebase
+                    [Parameter(ParameterSetName = 'Continue', Mandatory)]
+                    [switch]$Continue,
+
+                    [Parameter(ParameterSetName = 'Abort', Mandatory)]
+                    [switch]$Abort,
+
+                    [Parameter(ParameterSetName = 'Skip', Mandatory)]
+                    [switch]$Skip,
+                    #endregion params for active rebase
+
+                    #region params for starting a rebase
+                    [Parameter(ParameterSetName = 'Count', Position = 0)]
+                    [ValidateRange(1, 5000)]
+                    [int]$Count,
+
+                    [Parameter(ParameterSetName = 'FromRef', Position = 0)]
+                    [Parameter(ParameterSetName = 'Count')]
+                    [string]$Onto,
+
+                    [Parameter(ParameterSetName = 'FromRef')]
+                    [string]$FromRef,
+
+                    [Parameter()]
+                    [switch]$Interactive,
+
+                    [Parameter()]
+                    [switch]$NoAutosquash
+                    #endregion params for starting a rebase
+                )
+            }
+
+            $Script:RebaseParams = (Get-Command _rebase).Parameters.Values | Write-Output
+        }
+
+
+        $Params = if (Test-ActiveRebase) {$Script:RebaseParams[0..2]} else {$Script:RebaseParams[3..7]}
+        foreach ($Param in $Params)
         {
             $DynParam = [RuntimeDefinedParameter]::new(
                 $Param.Name,
