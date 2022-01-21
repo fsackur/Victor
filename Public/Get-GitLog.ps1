@@ -13,7 +13,10 @@ function Get-GitLog
         [int]$Count = 30,
 
         [Parameter(ParameterSetName = 'FromRef')]
-        [string]$From
+        [string]$From,
+
+        [Parameter()]
+        [switch]$SortDescending
     )
 
     if ($PSCmdlet.ParameterSetName -eq 'SinceLastMerge')
@@ -37,6 +40,11 @@ function Get-GitLog
     else
     {
         $LogArgs.Add("-n $Count")
+    }
+
+    if ($SortDescending)
+    {
+        $LogArgs.Add("--reverse")
     }
 
     # https://git-scm.com/docs/git-log#_pretty_formats
