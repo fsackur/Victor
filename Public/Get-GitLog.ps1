@@ -23,7 +23,7 @@ function Get-GitLog
     }
     $OutputProperties = @($Format.Keys)
 
-    $Delim        = [char]31    # non-printing char that we don't expect to find in git output
+    $Delim        = [char]0x2007    # unusual space char that we don't expect to find in git output
     $FormatString = $Format.Values -join $Delim
     $LogArgs.Add("--pretty=format:$FormatString")
 

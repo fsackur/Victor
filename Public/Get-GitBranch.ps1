@@ -30,7 +30,7 @@ function Get-GitBranch
     {
         $OutputProperties = @($Format.Keys)
 
-        $Delim        = [char]31    # non-printing char that we don't expect to find in git output
+        $Delim        = [char]0x2007    # unusual space char that we don't expect to find in git output
         $FormatString = $Format.Values -join $Delim
 
         $BranchLines = git for-each-ref --format=$FormatString refs/heads
