@@ -1,19 +1,22 @@
-using namespace System.Collections.Generic
+using namespace System.Management.Automation.Language
 
 function Write-GitCommit
 {
-    [CmdletBinding()]
-    param
-    (
-	    [Parameter(Mandatory, Position = 0)]
-        [ValidateNotNullOrEmpty()]
-        [string]$Message,
+    [int]$Col = $MyInvocation.PositionMessage -replace '^At line:\d+ char:' -replace '(?s)\s.*'
+    $Col--
+    $Line = $MyInvocation.Line -replace "^.{$Col}$($MyInvocation.InvocationName) +"
 
-        [Parameter(DontShow, ValueFromRemainingArguments)]
-        [string[]]$MessageParts
-    )
+    [Token[]]$Tokens = $null
+    [void][Parser]::ParseInput($Line, [ref]$Tokens, [ref]$null)
 
-    if ($MessageParts) {$Message = "$Message $MessageParts"}
+    $SemicolonToken = $Tokens.Where({$_.Kind -eq 'Semi'}, 'First')
+    if ($SemicolonToken)
+    {
+        $Line = $Line.Substring(0, $SemicolonToken.Extent.StartOffset)
+    }
+
+    [string]$Message = $Line
+
 
     git commit -m $Message
 }
