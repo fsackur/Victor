@@ -11,8 +11,24 @@
 
     RootModule           = 'Victor.psm1'
 
+    AliasesToExport      = @(
+        'a',
+        'amend',
+        'c',
+        'ggl',
+        'rebase',
+        'rst'
+    )
+
     FunctionsToExport    = @(
-        '*'
+        'Add-GitFile',
+        'Get-GitBranch',
+        'Get-GitLog',
+        'Get-GitStatus',
+        'Reset-Git',
+        'Invoke-GitRebase',
+        'Update-GitCommit',
+        'Write-GitCommit'
     )
 
     PrivateData          = @{
