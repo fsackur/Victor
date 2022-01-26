@@ -16,8 +16,14 @@ function Get-GitLog
         [string]$From,
 
         [Parameter()]
-        [switch]$SortDescending
+        [switch]$SortDescending,
+
+        [Parameter()]
+        [ValidateSet('Relative', 'DateTime')]
+        [string]$DateFormat = 'Relative'
     )
+
+    $AsDatetime = $DateFormat -eq 'DateTime'
 
     if ($PSCmdlet.ParameterSetName -eq 'SinceLastMerge')
     {
@@ -51,7 +57,7 @@ function Get-GitLog
     $Format = [ordered]@{
         Id         = '%h'
         Author     = '%an'
-        AuthorDate = '%ar'
+        AuthorDate = if ($AsDatetime) {'%ai'} else {'%ar'}
         Summary    = '%s'
     }
     $OutputProperties = @($Format.Keys)
@@ -64,5 +70,12 @@ function Get-GitLog
     # Do the thing
     $CommitLines = & git $LogArgs
 
-    $CommitLines | ConvertFrom-Csv -Delimiter $Delim -Header $OutputProperties
+    $Commits = $CommitLines | ConvertFrom-Csv -Delimiter $Delim -Header $OutputProperties
+
+    if ($AsDatetime)
+    {
+        $Commits | ForEach-Object {$_.AuthorDate = [datetime]$_.AuthorDate}
+    }
+
+    $Commits
 }
