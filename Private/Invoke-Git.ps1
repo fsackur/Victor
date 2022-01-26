@@ -1,3 +1,5 @@
+using namespace System.Management.Automation
+
 function Invoke-Git
 {
     "git $($args)" | Write-Verbose
@@ -8,20 +10,16 @@ function Invoke-Git
 
     if ($LASTEXITCODE)
     {
-        $Output | ForEach-Object {
-            if ($_ -is [Management.Automation.ErrorRecord])
-            {
-                Write-Error -ErrorRecord $_
-            }
-            else
-            {
-                Write-Error -Message $_
-            }
-        }
+        $Output = $Output |
+            ForEach-Object {if ($_ -is [ErrorRecord]) {Write-Error -ErrorRecord $_} else {$_}} |
+            Out-String
+
+        $Output -replace '^[\s\r\n]*\n' -replace '\r?\n[\s\r\n]*$' | Write-Error
     }
     else
     {
-        $Output | ForEach-Object {[string]$_}
+        $Output = $Output | Out-String
+        $Output -replace '^[\s\r\n]*\n' -replace '\r?\n[\s\r\n]*$'
     }
 }
 Set-Alias git Invoke-Git
