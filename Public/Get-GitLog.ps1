@@ -49,10 +49,10 @@ function Get-GitLog
 
     # https://git-scm.com/docs/git-log#_pretty_formats
     $Format = [ordered]@{
-        Id        = '%h'
-        Author    = '%an'
-        UpdatedAt = '%ar'
-        Summary   = '%s'
+        Id         = '%h'
+        Author     = '%an'
+        AuthorDate = '%ar'
+        Summary    = '%s'
     }
     $OutputProperties = @($Format.Keys)
 
