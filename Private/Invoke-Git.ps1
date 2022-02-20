@@ -2,7 +2,8 @@ using namespace System.Management.Automation
 
 function Invoke-Git
 {
-    "git $($args)" | Write-Verbose
+    $Invocation = "git $($args)"
+    $Invocation | Write-Verbose
 
     $Git = Get-Command git -CommandType Application
 
@@ -12,11 +13,19 @@ function Invoke-Git
     {
         $Output = $Output | Out-String
         $Output = $Output -replace '^[\s\r\n]*\n' -replace '\r?\n[\s\r\n]*$'
-        $Output | Write-Error
+
+        $ErrorRecord = [Management.Automation.ErrorRecord]::new(
+            [Management.Automation.RuntimeException]::new($Output),
+            'NativeCommandError',
+            'FromStdErr',
+            "$($Git.Path) $($_args -join ' ')"
+        )
+        Write-Error -ErrorRecord $ErrorRecord
     }
     else
     {
-        $Output
+        # ErrorRecords with empty Message cast to string as typename...
+        [string[]]$Output -replace '^System\.Management\.Automation\.RemoteException$'
     }
 }
 Set-Alias git Invoke-Git
