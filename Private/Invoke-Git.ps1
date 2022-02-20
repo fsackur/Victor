@@ -10,16 +10,13 @@ function Invoke-Git
 
     if ($LASTEXITCODE)
     {
-        $Output = $Output |
-            ForEach-Object {if ($_ -is [ErrorRecord]) {Write-Error -ErrorRecord $_} else {$_}} |
-            Out-String
-
-        $Output -replace '^[\s\r\n]*\n' -replace '\r?\n[\s\r\n]*$' | Write-Error
+        $Output = $Output | Out-String
+        $Output = $Output -replace '^[\s\r\n]*\n' -replace '\r?\n[\s\r\n]*$'
+        $Output | Write-Error
     }
     else
     {
-        $Output = $Output | Out-String
-        $Output -replace '^[\s\r\n]*\n' -replace '\r?\n[\s\r\n]*$'
+        $Output
     }
 }
 Set-Alias git Invoke-Git
