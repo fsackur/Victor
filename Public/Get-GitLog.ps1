@@ -5,6 +5,12 @@ function Get-GitLog
     [CmdletBinding(DefaultParameterSetName = 'SinceLastMerge')]
     param
     (
+        [Parameter(ParameterSetName = 'Path', Mandatory)]
+        [string]$Path,
+
+        [Parameter(ParameterSetName = 'Path')]
+        [switch]$Follow,
+
         [Parameter(ParameterSetName = 'SinceLastMerge')]
         [switch]$SinceLastMerge,
 
@@ -13,6 +19,7 @@ function Get-GitLog
         [int]$Count = 30,
 
         [Parameter(ParameterSetName = 'FromRef')]
+        [Parameter(ParameterSetName = 'Path')]
         [string]$From,
 
         [Parameter()]
@@ -66,11 +73,29 @@ function Get-GitLog
     $FormatString = $Format.Values -join $Delim
     $LogArgs.Add("--pretty=format:$FormatString")
 
+    if ($Follow)
+    {
+        $LogArgs.Add("--follow")
+    }
+
+    if ($Path)
+    {
+        $LogArgs.Add("--name-only")
+        $LogArgs.Add("-p")
+        $LogArgs.Add($Path)
+    }
+
 
     # Do the thing
     $CommitLines = & git $LogArgs
 
     $Commits = $CommitLines | ConvertFrom-Csv -Delimiter $Delim -Header $OutputProperties
+
+    if ($Path)
+    {
+        # Hack until I can get rid of diff output entirely
+        $Commits = $Commits | Where-Object -Property Author
+    }
 
     if ($AsDatetime)
     {
