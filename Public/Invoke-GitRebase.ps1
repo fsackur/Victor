@@ -1,4 +1,4 @@
-function Select-GitCommit
+function Invoke-GitRebase
 {
     <#
         .SYNOPSIS
