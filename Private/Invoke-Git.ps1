@@ -2,11 +2,18 @@ using namespace System.Management.Automation
 
 function Invoke-Git
 {
-    "git $($args)" | Write-Verbose
+    [CmdletBinding()]
+    param
+    (
+        [Parameter(ValueFromRemainingArguments)]
+        [object[]]$_args
+    )
+
+    "git $($_args)" | Write-Verbose
 
     $Git = Get-Command git -CommandType Application
 
-    $Output = & $Git @args *>&1
+    $Output = & $Git @_args *>&1
 
     if ($LASTEXITCODE)
     {
