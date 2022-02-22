@@ -9,23 +9,28 @@ function Invoke-Git
 
     $Output = & $Git @args *>&1
 
-    if ($LASTEXITCODE)
-    {
-        $Output = $Output | Out-String
-        $Output = $Output -replace '^[\s\r\n]*\n' -replace '\r?\n[\s\r\n]*$'
+    $HadError = [bool]$LASTEXITCODE
 
-        $ErrorRecord = [Management.Automation.ErrorRecord]::new(
-            [Management.Automation.RuntimeException]::new($Output),
-            'NativeCommandError',
-            'FromStdErr',
-            "$($Git.Path) $($_args -join ' ')"
-        )
-        Write-Error -ErrorRecord $ErrorRecord
-    }
-    else
+    # ErrorRecords with empty Message cast to string as typename...
+    [string[]]$Output = $Output -replace '^System\.Management\.Automation\.RemoteException$'
+
+    if (-not $HadError)
     {
-        # ErrorRecords with empty Message cast to string as typename...
-        [string[]]$Output -replace '^System\.Management\.Automation\.RemoteException$'
+        return $Output.PSObject.BaseObject
     }
+
+    $Output = $Output | Out-String
+    $Output = $Output -replace '^[\s\r\n]*\n' -replace '\r?\n[\s\r\n]*$'
+
+    $ErrorRecord = [ErrorRecord]::new(
+        [RuntimeException]::new($Output),
+        'NativeCommandError',
+        'FromStdErr',
+        "$($Git.Path) $($_args -join ' ')"
+    )
+
+    $StackTraceField = [ErrorRecord].GetField('_scriptStackTrace', 'Instance,NonPublic')
+    $StackTraceField.SetValue($ErrorRecord, 'foo')
+    Write-Error -ErrorRecord $ErrorRecord
 }
 Set-Alias git Invoke-Git
