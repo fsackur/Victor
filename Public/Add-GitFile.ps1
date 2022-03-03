@@ -23,8 +23,8 @@ function Add-GitFile
 
     git $AddArgs
 
-    git status -v
-    git status
+    git -c color.ui=always status -v
+    git -c color.ui=always status
 }
 
 
