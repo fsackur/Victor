@@ -31,6 +31,10 @@
         'Write-GitCommit'
     )
 
+    CmdletsToExport      = @(
+        '*'
+    )
+
     PrivateData          = @{
         PSData = @{
             LicenseUri = 'https://raw.githubusercontent.com/fsackur/Victor/main/LICENSE'

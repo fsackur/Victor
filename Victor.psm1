@@ -4,6 +4,10 @@ param
     [switch]$NoAlias = $env:VICTOR_NO_PS_ALIAS
 )
 
+$DllNames = 'LibGit2Sharp.dll', 'Victor.dll'
+$DllPaths = $DllNames | ForEach-Object {Join-Path $PSScriptRoot $_}
+$DllPaths | ForEach-Object {Import-Module $_ -ErrorAction Stop}
+
 Get-ChildItem $PSScriptRoot\Private\*.ps1 -ErrorAction SilentlyContinue | ForEach-Object {. $_.FullName}
 Get-ChildItem $PSScriptRoot\Public\*.ps1 -ErrorAction SilentlyContinue | ForEach-Object {. $_.FullName}
 
