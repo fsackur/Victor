@@ -1,40 +1,30 @@
+
+BeforeAll {. (Join-Path $PSScriptRoot Test.Setup.ps1)}
+
+
 Describe Get-GitLog {
 
     BeforeAll {
-        Remove-Module Victor -ErrorAction SilentlyContinue
-        $Module = $PSScriptRoot |
-            Split-Path |
-            Join-Path -ChildPath Victor.psd1 |
-            Import-Module -PassThru -ErrorAction Stop
+        New-TestGitDir | Push-Location
 
-
-        $TestPath = ($env:TEMP | Resolve-Path -ErrorAction SilentlyContinue), '/tmp' |
-            Select-Object -First 1 |
-            Join-Path -ChildPath 'Victor.Tests'
-        $TestPath = New-Item $TestPath -ItemType Directory -Force -ErrorAction Stop
-
-        $TestRepos = $PSScriptRoot |
-            Join-Path -ChildPath 'Data' |
-            Get-ChildItem -Filter 'repo*.zip' -PipelineVariable Path |
+        $ExpectedCommitCount = 3
+        1..$ExpectedCommitCount |
             ForEach-Object {
-                $Destination = Join-Path $TestPath $_.BaseName
-                Expand-Archive $_.FullName $Destination -ErrorAction SilentlyContinue
-                Get-Item $Destination
+                git commit -m "Test commit $_" --allow-empty *>&1 | Write-Debug
             }
-
-        Push-Location $TestRepos[0]
     }
 
     AfterAll {
         Pop-Location
+        Clear-TestGitDir
     }
 
     It "Gets commits" {
-        (Get-GitLog).Count | Should -Be 6
+        (Get-GitLog).Count | Should -Be $ExpectedCommitCount
     }
 
     It "Gets up to Count commits" {
-        (Get-GitLog -Count 9).Count | Should -Be 6
+        (Get-GitLog -Count 9).Count | Should -Be $ExpectedCommitCount
         (Get-GitLog -Count 2).Count | Should -Be 2
     }
 }

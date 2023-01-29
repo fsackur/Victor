@@ -1,6 +1,6 @@
 @{
     Description          = 'A little helper for git history.'
-    ModuleVersion        = '0.0.1'
+    ModuleVersion        = '0.1.0'
     HelpInfoURI          = 'https://pages.github.com/fsackur/Victor'
 
     GUID                 = 'ac597611-e9a1-40d4-8282-9ecc14b6c789'
@@ -11,8 +11,24 @@
 
     RootModule           = 'Victor.psm1'
 
+    AliasesToExport      = @(
+        'a',
+        'amend',
+        'c',
+        'ggl',
+        'rebase',
+        'rst'
+    )
+
     FunctionsToExport    = @(
-        '*'
+        'Add-GitFile',
+        'Get-GitBranch',
+        'Get-GitLog',
+        'Get-GitStatus',
+        'Reset-Git',
+        'Invoke-GitRebase',
+        'Update-GitCommit',
+        'Write-GitCommit'
     )
 
     PrivateData          = @{
