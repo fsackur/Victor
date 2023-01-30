@@ -2,6 +2,7 @@
 
 [Diagnostics.CodeAnalysis.SuppressMessage('PSAvoidUsingInvokeExpression', '')]
 [Diagnostics.CodeAnalysis.SuppressMessage('PSReviewUnusedParameter', '')]
+[Diagnostics.CodeAnalysis.SuppressMessage('PSAvoidUsingWriteHost', '')]
 param
 (
     [version]$NewVersion,
@@ -36,6 +37,14 @@ task PSSA {
 
 # Synopsis: Clean build folder
 task Clean {
+    Get-ChildItem Build -Recurse -File -Filter *.dll | Remove-Item -ErrorAction SilentlyContinue -ErrorVariable FileErrors
+    $FileErrors.TargetObject |
+        Where-Object {$_ -is [IO.FileInfo]} |
+        ForEach-Object {
+            $TempFile = [IO.Path]::GetTempFileName()
+            Write-Host "Moving locked file '$($_.FullName)' to '$TempFile'..."
+            $_.MoveTo($TempFile, $true)
+        }
     remove Build
 }
 
